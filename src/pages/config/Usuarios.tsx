@@ -7,7 +7,7 @@ import { moduleGroups } from "../../data/modules";
 
 type ProfileRow = { id: string; email: string | null; username: string | null; full_name: string | null; role: string; status: string; allowed_modules: string[] | null };
 
-const SYNTHETIC_DOMAIN = "users.axionpaint.internal";
+const SYNTHETIC_DOMAIN = "users.axionvarejo.internal";
 const isSyntheticEmail = (email: string | null) => Boolean(email?.endsWith(`@${SYNTHETIC_DOMAIN}`));
 
 export default function Usuarios() {
