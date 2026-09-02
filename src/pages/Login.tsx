@@ -170,7 +170,8 @@ export default function Login() {
   }
 
   return (
-    <div className="login-screen" style={{ backgroundImage: `url(${loginHero})` }}>
+    <div className="login-screen">
+      <div className="login-bg" style={{ backgroundImage: `url(${loginHero})` }} />
       <div className="login-glow" />
 
       {step === "password" && (

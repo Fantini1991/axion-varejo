@@ -585,10 +585,19 @@ table.data-table tbody tr:hover {
   position: relative;
   overflow: hidden;
   background: #050b12;
-  background-size: auto 82%;
+  padding: 24px 6vw;
+}
+
+.login-bg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 9%;
+  bottom: 9%;
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  padding: 24px 6vw;
+  pointer-events: none;
 }
 
 .login-footer {
