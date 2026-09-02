@@ -20,9 +20,9 @@
   --text: #dde9f8;
   --text-strong: #f8fafc;
   --text-muted: #b0bfcf;
-  --accent: #f59e0b;
+  --accent: #14ccc0;
   --accent-text: #0f172a;
-  --accent-strong: #d97706;
+  --accent-strong: #10a39a;
   --danger: #f87171;
   --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.22);
 
@@ -637,8 +637,8 @@ table.data-table tbody tr:hover {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(5,11,18,0.3) 0%, rgba(5,11,18,0.15) 30%, rgba(5,11,18,0.15) 65%, rgba(5,11,18,0.75) 100%),
-    linear-gradient(90deg, rgba(5,11,18,0.2) 0%, rgba(5,11,18,0.5) 50%, rgba(5,11,18,0.2) 100%);
+    linear-gradient(180deg, rgba(5,11,18,0.15) 0%, rgba(5,11,18,0.05) 25%, rgba(5,11,18,0.05) 60%, rgba(5,11,18,0.7) 100%),
+    linear-gradient(90deg, rgba(5,11,18,0.1) 0%, rgba(5,11,18,0.25) 50%, rgba(5,11,18,0.1) 100%);
   pointer-events: none;
 }
 

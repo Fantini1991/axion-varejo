@@ -5,7 +5,7 @@ const TONE_KEY = "axion-varejo-tone";
 const DENSITY_KEY = "axion-varejo-density";
 const ACCENT_KEY = "axion-varejo-accent";
 
-export const ACCENT_PADRAO = "#f59e0b";
+export const ACCENT_PADRAO = "#14ccc0";
 const ACCENT_TEXT = "#0f172a"; // cor do texto sobre o accent (botões primários)
 const PAGE_BG = "#050816"; // fundo geral, o accent precisa se destacar sobre isso
 
