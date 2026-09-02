@@ -591,8 +591,8 @@ table.data-table tbody tr:hover {
 .login-bg {
   position: absolute;
   inset: 0;
-  background-size: auto 100%;
-  background-position: left center;
+  background-size: cover;
+  background-position: center;
   background-repeat: no-repeat;
   pointer-events: none;
 }
