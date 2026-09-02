@@ -588,15 +588,6 @@ table.data-table tbody tr:hover {
   padding: 24px 6vw;
 }
 
-.login-bg {
-  position: absolute;
-  inset: 0;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  pointer-events: none;
-}
-
 .login-footer {
   position: relative;
   z-index: 1;
@@ -632,9 +623,7 @@ table.data-table tbody tr:hover {
 .login-glow {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(180deg, rgba(5,11,18,0.35) 0%, rgba(5,11,18,0.2) 30%, rgba(5,11,18,0.2) 65%, rgba(5,11,18,0.8) 100%),
-    linear-gradient(90deg, rgba(5,11,18,0.25) 0%, rgba(5,11,18,0.55) 50%, rgba(5,11,18,0.25) 100%);
+  background: radial-gradient(circle at 20% 15%, rgba(245,158,11,0.10), transparent 45%), radial-gradient(circle at 85% 85%, rgba(245,158,11,0.06), transparent 40%);
   pointer-events: none;
 }
 
