@@ -4,6 +4,7 @@ import { LockKeyhole, User, KeyRound, ArrowRight, Smartphone, Mail, MessageCircl
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import loginHero from "../assets/login-hero.webp";
+import LoginFooter from "../components/LoginFooter";
 
 const SUPORTE_WHATSAPP = "5511964468588";
 
@@ -346,6 +347,8 @@ export default function Login() {
           </button>
         </form>
       )}
+
+      <LoginFooter />
     </div>
   );
 }

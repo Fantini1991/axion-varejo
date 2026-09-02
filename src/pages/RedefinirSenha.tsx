@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { LockKeyhole, KeyRound, ArrowRight } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import loginHero from "../assets/login-hero.webp";
+import LoginFooter from "../components/LoginFooter";
 
 export default function RedefinirSenha() {
   const navigate = useNavigate();
@@ -94,6 +95,8 @@ export default function RedefinirSenha() {
           </>
         )}
       </form>
+
+      <LoginFooter />
     </div>
   );
 }
