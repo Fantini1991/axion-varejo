@@ -591,8 +591,8 @@ table.data-table tbody tr:hover {
 .login-bg {
   position: absolute;
   inset: 0;
-  background-size: contain;
-  background-position: center;
+  background-size: cover;
+  background-position: center bottom;
   background-repeat: no-repeat;
   pointer-events: none;
 }
@@ -606,11 +606,11 @@ table.data-table tbody tr:hover {
   padding: 14px 6vw;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   font-size: 12px;
   color: var(--text-muted);
-  text-align: center;
+  text-align: left;
   background: linear-gradient(180deg, transparent 0%, rgba(5,11,18,0.75) 55%, rgba(5,11,18,0.92) 100%);
 }
 
