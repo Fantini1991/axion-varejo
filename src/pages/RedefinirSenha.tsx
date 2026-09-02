@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { LockKeyhole, KeyRound, ArrowRight } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import loginHero from "../assets/login-hero.webp";
 import LoginFooter from "../components/LoginFooter";
 
 export default function RedefinirSenha() {
@@ -42,7 +43,7 @@ export default function RedefinirSenha() {
   }
 
   return (
-    <div className="login-screen">
+    <div className="login-screen" style={{ backgroundImage: `url(${loginHero})` }}>
       <div className="login-glow" />
       <form onSubmit={handleSubmit} className="login-card">
         <div className="login-lock">

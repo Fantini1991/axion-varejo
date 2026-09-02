@@ -585,6 +585,9 @@ table.data-table tbody tr:hover {
   position: relative;
   overflow: hidden;
   background: #050b12;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   padding: 24px 6vw;
 }
 
@@ -623,7 +626,9 @@ table.data-table tbody tr:hover {
 .login-glow {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 20% 15%, rgba(245,158,11,0.10), transparent 45%), radial-gradient(circle at 85% 85%, rgba(245,158,11,0.06), transparent 40%);
+  background:
+    linear-gradient(180deg, rgba(5,11,18,0.3) 0%, rgba(5,11,18,0.15) 30%, rgba(5,11,18,0.15) 65%, rgba(5,11,18,0.75) 100%),
+    linear-gradient(90deg, rgba(5,11,18,0.2) 0%, rgba(5,11,18,0.5) 50%, rgba(5,11,18,0.2) 100%);
   pointer-events: none;
 }
 

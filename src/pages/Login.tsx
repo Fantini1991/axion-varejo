@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { LockKeyhole, User, KeyRound, ArrowRight, Smartphone, Mail, MessageCircle, ArrowLeft } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
+import loginHero from "../assets/login-hero.webp";
 import LoginFooter from "../components/LoginFooter";
 
 const SUPORTE_WHATSAPP = "5511964468588";
@@ -169,7 +170,7 @@ export default function Login() {
   }
 
   return (
-    <div className="login-screen">
+    <div className="login-screen" style={{ backgroundImage: `url(${loginHero})` }}>
       <div className="login-glow" />
 
       {step === "password" && (
