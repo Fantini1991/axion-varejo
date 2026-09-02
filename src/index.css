@@ -591,22 +591,27 @@ table.data-table tbody tr:hover {
 .login-bg {
   position: absolute;
   inset: 0;
-  background-size: cover;
+  background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
   pointer-events: none;
 }
 
 .login-footer {
-  position: relative;
+  position: absolute;
   z-index: 1;
-  max-width: 380px;
-  margin-top: 18px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 14px 6vw;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
   color: var(--text-muted);
+  text-align: center;
+  background: linear-gradient(180deg, transparent 0%, rgba(5,11,18,0.75) 55%, rgba(5,11,18,0.92) 100%);
 }
 
 .login-footer-row {
