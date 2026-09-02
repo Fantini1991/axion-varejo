@@ -43,7 +43,8 @@ export default function RedefinirSenha() {
   }
 
   return (
-    <div className="login-screen" style={{ backgroundImage: `url(${loginHero})` }}>
+    <div className="login-screen">
+      <div className="login-bg" style={{ backgroundImage: `url(${loginHero})` }} />
       <div className="login-glow" />
       <form onSubmit={handleSubmit} className="login-card">
         <div className="login-lock">
