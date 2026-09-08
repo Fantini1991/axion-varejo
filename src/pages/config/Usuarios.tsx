@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { UserPlus, ShieldCheck, KeyRound, X, Pencil, Trash2 } from "lucide-react";
+import { UserPlus, ShieldCheck, X, Pencil, Trash2 } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
-import { moduleGroups } from "../../data/modules";
+import { moduleGroups, flatModules } from "../../data/modules";
 
 type ProfileRow = { id: string; email: string | null; username: string | null; full_name: string | null; role: string; status: string; allowed_modules: string[] | null };
 
@@ -82,105 +82,100 @@ export default function Usuarios() {
     setInviting(false);
   }
 
-  const [permUser, setPermUser] = useState<ProfileRow | null>(null);
-  const [permTotal, setPermTotal] = useState(true);
-  const [permAllowed, setPermAllowed] = useState<string[]>([]);
-  const [permSaving, setPermSaving] = useState(false);
+  // ── Modal unificado: dados + permissões ─────────────────────────────────
+  const [manageUser, setManageUser] = useState<ProfileRow | null>(null);
+  const [manageTab, setManageTab] = useState<"dados" | "permissoes">("dados");
+  const [mFullName, setMFullName] = useState("");
+  const [mUsername, setMUsername] = useState("");
+  const [mEmail, setMEmail] = useState("");
+  const [mPassword, setMPassword] = useState("");
+  const [mRole, setMRole] = useState("operador");
+  const [mStatus, setMStatus] = useState("Ativo");
+  const [mPermTotal, setMPermTotal] = useState(true);
+  const [mPermAllowed, setMPermAllowed] = useState<string[]>([]);
+  const [mSaving, setMSaving] = useState(false);
+  const [mError, setMError] = useState("");
 
-  function abrirPermissoes(u: ProfileRow) {
-    setPermUser(u);
-    setPermTotal(u.allowed_modules == null);
-    setPermAllowed(u.allowed_modules ?? []);
+  const isSelf = manageUser?.id === profile?.id;
+
+  function abrirGerenciar(u: ProfileRow) {
+    setManageUser(u);
+    setManageTab("dados");
+    setMFullName(u.full_name ?? "");
+    setMUsername(u.username ?? "");
+    setMEmail(isSyntheticEmail(u.email) ? "" : (u.email ?? ""));
+    setMPassword("");
+    setMRole(u.role);
+    setMStatus(u.status);
+    setMPermTotal(u.allowed_modules == null);
+    setMPermAllowed(u.allowed_modules ?? []);
+    setMError("");
   }
 
   function togglePermissao(path: string) {
-    setPermAllowed(cur => (cur.includes(path) ? cur.filter(p => p !== path) : [...cur, path]));
+    setMPermTotal(false);
+    setMPermAllowed(cur => (cur.includes(path) ? cur.filter(p => p !== path) : [...cur, path]));
   }
 
-  async function salvarPermissoes() {
-    if (!permUser) return;
-    setPermSaving(true);
-    await supabase.from("profiles").update({ allowed_modules: permTotal ? null : permAllowed }).eq("id", permUser.id);
-    setPermSaving(false);
-    setPermUser(null);
-    await load();
+  function aplicarPreset(paths: string[]) {
+    setMPermTotal(false);
+    setMPermAllowed(paths);
   }
 
-  async function updateRole(userId: string, role: string) {
-    await supabase.from("profiles").update({ role }).eq("id", userId);
-    await load();
-  }
-
-  async function updateStatus(userId: string, status: string) {
-    await supabase.from("profiles").update({ status }).eq("id", userId);
-    await load();
-  }
-
-  const [editUser, setEditUser] = useState<ProfileRow | null>(null);
-  const [editFullName, setEditFullName] = useState("");
-  const [editUsername, setEditUsername] = useState("");
-  const [editEmail, setEditEmail] = useState("");
-  const [editPassword, setEditPassword] = useState("");
-  const [editSaving, setEditSaving] = useState(false);
-  const [editError, setEditError] = useState("");
-
-  function abrirEdicao(u: ProfileRow) {
-    setEditUser(u);
-    setEditFullName(u.full_name ?? "");
-    setEditUsername(u.username ?? "");
-    setEditEmail(isSyntheticEmail(u.email) ? "" : (u.email ?? ""));
-    setEditPassword("");
-    setEditError("");
-  }
-
-  async function salvarEdicao(e: React.FormEvent) {
+  async function salvarGerenciar(e: React.FormEvent) {
     e.preventDefault();
-    if (!editUser) return;
-    setEditSaving(true);
-    setEditError("");
+    if (!manageUser) return;
+    setMSaving(true);
+    setMError("");
 
-    const username = editUsername.trim().toLowerCase();
+    const username = mUsername.trim().toLowerCase();
     if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
-      setEditError("Usuário inválido. Use de 3 a 32 letras minúsculas, números, ponto, hífen ou underscore.");
-      setEditSaving(false);
+      setMError("Usuário inválido. Use de 3 a 32 letras minúsculas, números, ponto, hífen ou underscore.");
+      setMSaving(false);
       return;
     }
-    if (username !== (editUser.username ?? "")) {
-      const { data: existing } = await supabase.from("profiles").select("id").ilike("username", username).neq("id", editUser.id).maybeSingle();
+    if (username !== (manageUser.username ?? "")) {
+      const { data: existing } = await supabase.from("profiles").select("id").ilike("username", username).neq("id", manageUser.id).maybeSingle();
       if (existing) {
-        setEditError("Já existe um usuário com esse nome.");
-        setEditSaving(false);
+        setMError("Já existe um usuário com esse nome.");
+        setMSaving(false);
         return;
       }
     }
 
-    const patch: Record<string, unknown> = { full_name: editFullName.trim() || null, username };
-    if (editEmail.trim()) patch.email = editEmail.trim().toLowerCase();
-    const { error: updateError } = await supabase.from("profiles").update(patch).eq("id", editUser.id);
+    const patch: Record<string, unknown> = { full_name: mFullName.trim() || null, username };
+    if (mEmail.trim()) patch.email = mEmail.trim().toLowerCase();
+    if (!isSelf) {
+      patch.role = mRole;
+      patch.status = mStatus;
+      patch.allowed_modules = mPermTotal ? null : mPermAllowed;
+    }
+
+    const { error: updateError } = await supabase.from("profiles").update(patch).eq("id", manageUser.id);
     if (updateError) {
-      setEditError(updateError.message);
-      setEditSaving(false);
+      setMError(updateError.message);
+      setMSaving(false);
       return;
     }
 
-    if (editPassword) {
-      if (editPassword.length < 8) {
-        setEditError("A nova senha precisa ter pelo menos 8 caracteres.");
-        setEditSaving(false);
+    if (mPassword) {
+      if (mPassword.length < 8) {
+        setMError("A nova senha precisa ter pelo menos 8 caracteres.");
+        setMSaving(false);
         return;
       }
       const { data, error: pwError } = await supabase.functions.invoke("manage-user", {
-        body: { action: "reset-password", userId: editUser.id, newPassword: editPassword },
+        body: { action: "reset-password", userId: manageUser.id, newPassword: mPassword },
       });
       if (pwError || (data as { error?: string })?.error) {
-        setEditError((data as { error?: string })?.error ?? pwError?.message ?? "Erro ao redefinir senha.");
-        setEditSaving(false);
+        setMError((data as { error?: string })?.error ?? pwError?.message ?? "Erro ao redefinir senha.");
+        setMSaving(false);
         return;
       }
     }
 
-    setEditSaving(false);
-    setEditUser(null);
+    setMSaving(false);
+    setManageUser(null);
     await load();
   }
 
@@ -193,12 +188,14 @@ export default function Usuarios() {
     if (delError || (data as { error?: string })?.error) {
       setError((data as { error?: string })?.error ?? delError?.message ?? "Erro ao excluir usuário.");
     } else {
+      setManageUser(null);
       await load();
     }
   }
 
   const inp: React.CSSProperties = { padding: "9px 11px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--surface-input)", color: "var(--text-strong)", fontSize: 13.5, width: "100%" };
   const lbl: React.CSSProperties = { display: "block", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.4 };
+  const telasSelecionadas = mPermTotal ? flatModules.length : mPermAllowed.length;
 
   return (
     <MainLayout>
@@ -221,7 +218,7 @@ export default function Usuarios() {
         </div>
       )}
       {success && <div style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{success}</div>}
-      {error && !showInvite && !editUser && <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#fca5a5", padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{error}</div>}
+      {error && !showInvite && !manageUser && <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#fca5a5", padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{error}</div>}
 
       <div className="panel" style={{ padding: 0, overflow: "auto" }}>
         <table className="data-table">
@@ -236,41 +233,20 @@ export default function Usuarios() {
                 <td>{u.username || "—"}</td>
                 <td>{isSyntheticEmail(u.email) ? "—" : u.email}</td>
                 <td>
-                  {isAdmin && u.id !== profile?.id ? (
-                    <select value={u.role} onChange={e => updateRole(u.id, e.target.value)} style={{ ...inp, padding: "5px 8px", width: "auto" }}>
-                      <option value="operador">Operador</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  ) : (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                      {u.role === "admin" && <ShieldCheck size={13} color="var(--accent)" />} {u.role === "admin" ? "Admin" : "Operador"}
-                    </span>
-                  )}
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                    {u.role === "admin" && <ShieldCheck size={13} color="var(--accent)" />} {u.role === "admin" ? "Admin" : "Operador"}
+                  </span>
                 </td>
                 <td>
-                  {isAdmin && u.id !== profile?.id ? (
-                    <select value={u.status} onChange={e => updateStatus(u.id, e.target.value)} style={{ ...inp, padding: "5px 8px", width: "auto" }}>
-                      <option value="Ativo">Ativo</option>
-                      <option value="Inativo">Inativo</option>
-                      <option value="Bloqueado">Bloqueado</option>
-                    </select>
-                  ) : (
-                    <span style={{ color: u.status === "Ativo" ? "#4ade80" : "var(--danger)" }}>{u.status}</span>
-                  )}
+                  <span style={{ color: u.status === "Ativo" ? "#4ade80" : "var(--danger)" }}>{u.status}</span>
                 </td>
                 <td>
-                  {isAdmin && u.id !== profile?.id ? (
-                    <button type="button" onClick={() => abrirPermissoes(u)} className="btn" style={{ padding: "5px 10px", fontSize: 12 }}>
-                      <KeyRound size={13} /> {u.allowed_modules == null ? "Total" : `${u.allowed_modules.length} tela(s)`}
-                    </button>
-                  ) : (
-                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{u.allowed_modules == null ? "Total" : `${u.allowed_modules.length} tela(s)`}</span>
-                  )}
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{u.allowed_modules == null ? "Total" : `${u.allowed_modules.length} tela(s)`}</span>
                 </td>
                 <td>
                   {isAdmin && (
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button type="button" onClick={() => abrirEdicao(u)} className="icon-btn" title="Editar usuário">
+                      <button type="button" onClick={() => abrirGerenciar(u)} className="icon-btn" title="Gerenciar usuário">
                         <Pencil size={14} />
                       </button>
                       {u.id !== profile?.id && (
@@ -349,96 +325,158 @@ export default function Usuarios() {
         </div>
       )}
 
-      {editUser && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-          <form onSubmit={salvarEdicao} className="panel" style={{ width: 420, maxWidth: "100%", display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-strong)", margin: 0 }}>Editar usuário</h2>
-              <button type="button" onClick={() => setEditUser(null)} className="icon-btn"><X size={18} /></button>
-            </div>
-
-            {editError && <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#fca5a5", padding: "9px 12px", borderRadius: 8, fontSize: 13 }}>{editError}</div>}
-
-            <div>
-              <label style={lbl}>Nome</label>
-              <input style={inp} value={editFullName} onChange={e => setEditFullName(e.target.value)} />
-            </div>
-            <div>
-              <label style={lbl}>Nome de usuário</label>
-              <input required style={inp} value={editUsername} onChange={e => setEditUsername(e.target.value.toLowerCase())} />
-            </div>
-            <div>
-              <label style={lbl}>E-mail (opcional)</label>
-              <input type="email" style={inp} placeholder="deixe em branco se não tiver" value={editEmail} onChange={e => setEditEmail(e.target.value)} />
-            </div>
-            <div>
-              <label style={lbl}>Nova senha (opcional)</label>
-              <input type="text" style={inp} placeholder="deixe em branco pra manter a atual" value={editPassword} onChange={e => setEditPassword(e.target.value)} />
-            </div>
-
-            <div style={{ display: "flex", gap: 10 }}>
-              <button type="button" onClick={() => setEditUser(null)} className="btn" style={{ flex: 1, justifyContent: "center" }}>Cancelar</button>
-              <button type="submit" disabled={editSaving} className="btn btn-save" style={{ flex: 1, justifyContent: "center" }}>
-                {editSaving ? "Salvando..." : "Salvar"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {permUser && (
+      {manageUser && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20 }}>
-          <div className="panel" style={{ width: 480, maxWidth: "100%", maxHeight: "86vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-strong)", margin: 0 }}>Telas de {permUser.full_name || permUser.username}</h2>
-              <button type="button" onClick={() => setPermUser(null)} className="icon-btn"><X size={18} /></button>
+          <form onSubmit={salvarGerenciar} className="panel" style={{ width: 560, maxWidth: "100%", maxHeight: "88vh", display: "flex", flexDirection: "column", gap: 0, padding: 0, overflow: "hidden" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 20px 0" }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-strong)", margin: 0 }}>
+                {manageUser.full_name || manageUser.username}
+              </h2>
+              <button type="button" onClick={() => setManageUser(null)} className="icon-btn"><X size={18} /></button>
             </div>
 
-            <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" onClick={() => setPermTotal(true)} className="btn" style={{ flex: 1, justifyContent: "center", ...(permTotal ? { borderColor: "var(--accent)", color: "var(--text-strong)" } : {}) }}>Acesso total</button>
-              <button type="button" onClick={() => setPermTotal(false)} className="btn" style={{ flex: 1, justifyContent: "center", ...(!permTotal ? { borderColor: "var(--accent)", color: "var(--text-strong)" } : {}) }}>Telas selecionadas</button>
+            <div style={{ display: "flex", gap: 4, padding: "14px 20px 0", borderBottom: "1px solid var(--border)" }}>
+              <button
+                type="button"
+                onClick={() => setManageTab("dados")}
+                style={{ background: "none", border: "none", borderBottom: manageTab === "dados" ? "2px solid var(--accent)" : "2px solid transparent", color: manageTab === "dados" ? "var(--text-strong)" : "var(--text-muted)", fontWeight: 700, fontSize: 13, padding: "0 4px 10px", cursor: "pointer" }}
+              >
+                Dados do usuário
+              </button>
+              {!isSelf && (
+                <button
+                  type="button"
+                  onClick={() => setManageTab("permissoes")}
+                  style={{ background: "none", border: "none", borderBottom: manageTab === "permissoes" ? "2px solid var(--accent)" : "2px solid transparent", color: manageTab === "permissoes" ? "var(--text-strong)" : "var(--text-muted)", fontWeight: 700, fontSize: 13, padding: "0 4px 10px", cursor: "pointer", marginLeft: 18 }}
+                >
+                  Permissões de acesso
+                </button>
+              )}
             </div>
 
-            {permTotal ? (
-              <p style={{ fontSize: 12.5, color: "var(--text-muted)", margin: 0 }}>Esse usuário vê e acessa todas as telas do sistema.</p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {moduleGroups.map(group => (
-                  <div key={group.title}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>{group.title}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const paths = group.children.map(m => m.path);
-                          const todosMarcados = paths.every(p => permAllowed.includes(p));
-                          setPermAllowed(cur => todosMarcados ? cur.filter(p => !paths.includes(p)) : [...new Set([...cur, ...paths])]);
-                        }}
-                        style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, cursor: "pointer", padding: 0 }}
-                      >
-                        {group.children.every(m => permAllowed.includes(m.path)) ? "Desmarcar todos" : "Marcar todos"}
-                      </button>
+            <div style={{ padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
+              {mError && <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#fca5a5", padding: "9px 12px", borderRadius: 8, fontSize: 13 }}>{mError}</div>}
+
+              {manageTab === "dados" && (
+                <>
+                  <div>
+                    <label style={lbl}>Nome</label>
+                    <input style={inp} value={mFullName} onChange={e => setMFullName(e.target.value)} />
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={lbl}>Usuário / login</label>
+                      <input required style={inp} value={mUsername} onChange={e => setMUsername(e.target.value.toLowerCase())} />
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      {group.children.map(m => (
-                        <label key={m.path} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-strong)", cursor: "pointer" }}>
-                          <input type="checkbox" checked={permAllowed.includes(m.path)} onChange={() => togglePermissao(m.path)} />
-                          {m.title}
-                        </label>
+                    <div>
+                      <label style={lbl}>Status</label>
+                      {isSelf ? (
+                        <div style={{ ...inp, display: "flex", alignItems: "center", color: "var(--text-muted)" }}>{mStatus}</div>
+                      ) : (
+                        <select style={inp} value={mStatus} onChange={e => setMStatus(e.target.value)}>
+                          <option value="Ativo">Ativo</option>
+                          <option value="Inativo">Inativo</option>
+                          <option value="Bloqueado">Bloqueado</option>
+                        </select>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={lbl}>E-mail (opcional)</label>
+                    <input type="email" style={inp} placeholder="deixe em branco se não tiver" value={mEmail} onChange={e => setMEmail(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Nova senha (opcional)</label>
+                    <input type="text" style={inp} placeholder="deixe em branco pra manter a atual" value={mPassword} onChange={e => setMPassword(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Papel</label>
+                    {isSelf ? (
+                      <div style={{ ...inp, display: "flex", alignItems: "center", color: "var(--text-muted)" }}>{mRole === "admin" ? "Admin" : "Operador"}</div>
+                    ) : (
+                      <select style={inp} value={mRole} onChange={e => setMRole(e.target.value)}>
+                        <option value="operador">Operador</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {manageTab === "permissoes" && !isSelf && (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
+                      <strong className="mono" style={{ color: "var(--text-strong)" }}>{telasSelecionadas}</strong> tela(s) selecionada(s)
+                    </span>
+                    <div style={{ display: "flex", gap: 12 }}>
+                      <button type="button" onClick={() => { setMPermTotal(true); setMPermAllowed([]); }} style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 12, cursor: "pointer", padding: 0 }}>Marcar tudo</button>
+                      <button type="button" onClick={() => { setMPermTotal(false); setMPermAllowed([]); }} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 12, cursor: "pointer", padding: 0 }}>Limpar tudo</button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>Perfil rápido (preenche permissões)</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <button type="button" onClick={() => { setMPermTotal(true); setMPermAllowed([]); }} className="btn" style={{ padding: "5px 10px", fontSize: 12 }}>Administrador</button>
+                      {moduleGroups.map(group => (
+                        <button key={group.title} type="button" onClick={() => aplicarPreset(group.children.map(m => m.path))} className="btn" style={{ padding: "5px 10px", fontSize: 12 }}>
+                          {group.title.charAt(0) + group.title.slice(1).toLowerCase()}
+                        </button>
                       ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
 
-            <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-              <button type="button" onClick={() => setPermUser(null)} className="btn" style={{ flex: 1, justifyContent: "center" }}>Cancelar</button>
-              <button type="button" onClick={salvarPermissoes} disabled={permSaving} className="btn btn-save" style={{ flex: 1, justifyContent: "center" }}>
-                {permSaving ? "Salvando..." : "Salvar"}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    {moduleGroups.map(group => (
+                      <div key={group.title}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>{group.title}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const paths = group.children.map(m => m.path);
+                              const todosMarcados = paths.every(p => mPermTotal || mPermAllowed.includes(p));
+                              const base = mPermTotal ? flatModules.map(m => m.path) : mPermAllowed;
+                              setMPermTotal(false);
+                              setMPermAllowed(todosMarcados ? base.filter(p => !paths.includes(p)) : [...new Set([...base, ...paths])]);
+                            }}
+                            style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, cursor: "pointer", padding: 0 }}
+                          >
+                            {group.children.every(m => mPermTotal || mPermAllowed.includes(m.path)) ? "Desmarcar todos" : "Marcar todos"}
+                          </button>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {group.children.map(m => (
+                            <label key={m.path} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-strong)", cursor: "pointer" }}>
+                              <input type="checkbox" checked={mPermTotal || mPermAllowed.includes(m.path)} onChange={() => togglePermissao(m.path)} />
+                              <span>
+                                {m.title}
+                                <span style={{ display: "block", fontSize: 11, color: "var(--text-faint, var(--text-muted))", opacity: 0.7 }}>{m.path}</span>
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: 10, padding: 20, borderTop: "1px solid var(--border)" }}>
+              {!isSelf && (
+                <button type="button" onClick={() => excluirUsuario(manageUser)} className="btn" style={{ color: "var(--danger)", borderColor: "rgba(248,113,113,0.3)" }}>
+                  <Trash2 size={14} /> Excluir
+                </button>
+              )}
+              <div style={{ flex: 1 }} />
+              <button type="button" onClick={() => setManageUser(null)} className="btn">Cancelar</button>
+              <button type="submit" disabled={mSaving} className="btn btn-save">
+                {mSaving ? "Salvando..." : "Salvar"}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
     </MainLayout>

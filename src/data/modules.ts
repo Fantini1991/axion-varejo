@@ -73,9 +73,8 @@ export const flatModules: Modulo[] = moduleGroups.flatMap(g => g.children);
 
 export const findModuleByPath = (path: string) => flatModules.find(m => m.path === path);
 
-/** Admins sempre têm acesso total. `allowed_modules` nulo = acesso a tudo (padrão, compatível com usuários já existentes). */
-export function podeAcessarModulo(role: string | undefined, allowedModules: string[] | null | undefined, path: string): boolean {
-  if (role === "admin") return true;
+/** `allowed_modules` nulo = acesso a tudo (padrão, compatível com usuários já existentes e admins sem restrição definida). */
+export function podeAcessarModulo(_role: string | undefined, allowedModules: string[] | null | undefined, path: string): boolean {
   if (allowedModules == null) return true;
   return allowedModules.includes(path);
 }
