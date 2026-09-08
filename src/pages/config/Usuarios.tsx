@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { UserPlus, ShieldCheck, KeyRound, X } from "lucide-react";
+import { UserPlus, ShieldCheck, KeyRound, X, Pencil, Trash2 } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
@@ -116,6 +116,87 @@ export default function Usuarios() {
     await load();
   }
 
+  const [editUser, setEditUser] = useState<ProfileRow | null>(null);
+  const [editFullName, setEditFullName] = useState("");
+  const [editUsername, setEditUsername] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+
+  function abrirEdicao(u: ProfileRow) {
+    setEditUser(u);
+    setEditFullName(u.full_name ?? "");
+    setEditUsername(u.username ?? "");
+    setEditEmail(isSyntheticEmail(u.email) ? "" : (u.email ?? ""));
+    setEditPassword("");
+    setEditError("");
+  }
+
+  async function salvarEdicao(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editUser) return;
+    setEditSaving(true);
+    setEditError("");
+
+    const username = editUsername.trim().toLowerCase();
+    if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
+      setEditError("Usuário inválido. Use de 3 a 32 letras minúsculas, números, ponto, hífen ou underscore.");
+      setEditSaving(false);
+      return;
+    }
+    if (username !== (editUser.username ?? "")) {
+      const { data: existing } = await supabase.from("profiles").select("id").ilike("username", username).neq("id", editUser.id).maybeSingle();
+      if (existing) {
+        setEditError("Já existe um usuário com esse nome.");
+        setEditSaving(false);
+        return;
+      }
+    }
+
+    const patch: Record<string, unknown> = { full_name: editFullName.trim() || null, username };
+    if (editEmail.trim()) patch.email = editEmail.trim().toLowerCase();
+    const { error: updateError } = await supabase.from("profiles").update(patch).eq("id", editUser.id);
+    if (updateError) {
+      setEditError(updateError.message);
+      setEditSaving(false);
+      return;
+    }
+
+    if (editPassword) {
+      if (editPassword.length < 8) {
+        setEditError("A nova senha precisa ter pelo menos 8 caracteres.");
+        setEditSaving(false);
+        return;
+      }
+      const { data, error: pwError } = await supabase.functions.invoke("manage-user", {
+        body: { action: "reset-password", userId: editUser.id, newPassword: editPassword },
+      });
+      if (pwError || (data as { error?: string })?.error) {
+        setEditError((data as { error?: string })?.error ?? pwError?.message ?? "Erro ao redefinir senha.");
+        setEditSaving(false);
+        return;
+      }
+    }
+
+    setEditSaving(false);
+    setEditUser(null);
+    await load();
+  }
+
+  async function excluirUsuario(u: ProfileRow) {
+    if (!window.confirm(`Excluir "${u.full_name || u.username}"? Essa ação não pode ser desfeita.`)) return;
+    setError("");
+    const { data, error: delError } = await supabase.functions.invoke("manage-user", {
+      body: { action: "delete", userId: u.id },
+    });
+    if (delError || (data as { error?: string })?.error) {
+      setError((data as { error?: string })?.error ?? delError?.message ?? "Erro ao excluir usuário.");
+    } else {
+      await load();
+    }
+  }
+
   const inp: React.CSSProperties = { padding: "9px 11px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--surface-input)", color: "var(--text-strong)", fontSize: 13.5, width: "100%" };
   const lbl: React.CSSProperties = { display: "block", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.4 };
 
@@ -140,14 +221,15 @@ export default function Usuarios() {
         </div>
       )}
       {success && <div style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{success}</div>}
+      {error && !showInvite && !editUser && <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#fca5a5", padding: "10px 14px", borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{error}</div>}
 
       <div className="panel" style={{ padding: 0, overflow: "auto" }}>
         <table className="data-table">
           <thead>
-            <tr><th>NOME</th><th>USUÁRIO</th><th>E-MAIL</th><th>PAPEL</th><th>STATUS</th><th>TELAS</th></tr>
+            <tr><th>NOME</th><th>USUÁRIO</th><th>E-MAIL</th><th>PAPEL</th><th>STATUS</th><th>TELAS</th><th>AÇÕES</th></tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={6} style={{ padding: 24, textAlign: "center", color: "var(--text-muted)" }}>Carregando...</td></tr>}
+            {loading && <tr><td colSpan={7} style={{ padding: 24, textAlign: "center", color: "var(--text-muted)" }}>Carregando...</td></tr>}
             {!loading && users.map(u => (
               <tr key={u.id}>
                 <td style={{ fontWeight: 600, color: "var(--text-strong)" }}>{u.full_name || "—"}</td>
@@ -177,14 +259,26 @@ export default function Usuarios() {
                   )}
                 </td>
                 <td>
-                  {u.role === "admin" ? (
-                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Total (admin)</span>
-                  ) : isAdmin ? (
+                  {isAdmin && u.id !== profile?.id ? (
                     <button type="button" onClick={() => abrirPermissoes(u)} className="btn" style={{ padding: "5px 10px", fontSize: 12 }}>
                       <KeyRound size={13} /> {u.allowed_modules == null ? "Total" : `${u.allowed_modules.length} tela(s)`}
                     </button>
                   ) : (
                     <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{u.allowed_modules == null ? "Total" : `${u.allowed_modules.length} tela(s)`}</span>
+                  )}
+                </td>
+                <td>
+                  {isAdmin && (
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button type="button" onClick={() => abrirEdicao(u)} className="icon-btn" title="Editar usuário">
+                        <Pencil size={14} />
+                      </button>
+                      {u.id !== profile?.id && (
+                        <button type="button" onClick={() => excluirUsuario(u)} className="icon-btn" title="Excluir usuário" style={{ color: "var(--danger)" }}>
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   )}
                 </td>
               </tr>
@@ -249,6 +343,43 @@ export default function Usuarios() {
               <button type="button" onClick={() => setShowInvite(false)} className="btn" style={{ flex: 1, justifyContent: "center" }}>Cancelar</button>
               <button type="submit" disabled={inviting} className="btn btn-save" style={{ flex: 1, justifyContent: "center" }}>
                 {inviting ? "Salvando..." : modo === "convite" ? "Enviar convite" : "Criar usuário"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {editUser && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+          <form onSubmit={salvarEdicao} className="panel" style={{ width: 420, maxWidth: "100%", display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-strong)", margin: 0 }}>Editar usuário</h2>
+              <button type="button" onClick={() => setEditUser(null)} className="icon-btn"><X size={18} /></button>
+            </div>
+
+            {editError && <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#fca5a5", padding: "9px 12px", borderRadius: 8, fontSize: 13 }}>{editError}</div>}
+
+            <div>
+              <label style={lbl}>Nome</label>
+              <input style={inp} value={editFullName} onChange={e => setEditFullName(e.target.value)} />
+            </div>
+            <div>
+              <label style={lbl}>Nome de usuário</label>
+              <input required style={inp} value={editUsername} onChange={e => setEditUsername(e.target.value.toLowerCase())} />
+            </div>
+            <div>
+              <label style={lbl}>E-mail (opcional)</label>
+              <input type="email" style={inp} placeholder="deixe em branco se não tiver" value={editEmail} onChange={e => setEditEmail(e.target.value)} />
+            </div>
+            <div>
+              <label style={lbl}>Nova senha (opcional)</label>
+              <input type="text" style={inp} placeholder="deixe em branco pra manter a atual" value={editPassword} onChange={e => setEditPassword(e.target.value)} />
+            </div>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button type="button" onClick={() => setEditUser(null)} className="btn" style={{ flex: 1, justifyContent: "center" }}>Cancelar</button>
+              <button type="submit" disabled={editSaving} className="btn btn-save" style={{ flex: 1, justifyContent: "center" }}>
+                {editSaving ? "Salvando..." : "Salvar"}
               </button>
             </div>
           </form>
